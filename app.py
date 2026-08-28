@@ -7,17 +7,14 @@ from waitress import serve
 app = Flask(__name__)
 app.secret_key = 'pntvcontrol_secret_key_prod'
 
-# Credenciais Padrão
 USUARIO_ADMIN = "admin"
 SENHA_ADMIN = "admin123"
-
 DB_FILE = 'ordens.db'
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # Tabela de Ordens de Serviço
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ordens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,11 +23,11 @@ def init_db():
             quantidade REAL,
             valor_unitario REAL,
             valor_total REAL,
-            data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            data_servico TEXT,
+            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Tabela de Terceiros
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS terceiros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +35,6 @@ def init_db():
         )
     ''')
     
-    # Tabela de Serviços por Terceiro
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS servicos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,10 +44,9 @@ def init_db():
         )
     ''')
 
-    # Popular Terceiros se o banco for recém-criado
     cursor.execute('SELECT COUNT(*) FROM terceiros')
     if cursor.fetchone()[0] == 0:
-        terceiros_iniciais = ["PADRAO", "ELIENE", "LEANDRO", "STEVAN", "Denis", "CLEIDE"]
+        terceiros_iniciais = ["PADRAO", "ELIENE", "LEANDRO", "STEVAN", "DENIS", "CLEIDE"]
         for t in terceiros_iniciais:
             cursor.execute('INSERT OR IGNORE INTO terceiros (nome) VALUES (?)', (t,))
 
@@ -75,7 +70,6 @@ def init_db():
 
 init_db()
 
-# Decorator de Login
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -88,9 +82,7 @@ def login_required(f):
 def login():
     erro = None
     if request.method == 'POST':
-        usuario = request.form.get('usuario')
-        senha = request.form.get('senha')
-        if usuario == USUARIO_ADMIN and senha == SENHA_ADMIN:
+        if request.form.get('usuario') == USUARIO_ADMIN and request.form.get('senha') == SENHA_ADMIN:
             session['logged_in'] = True
             return redirect(url_for('index'))
         erro = "Usuário ou senha incorretos."
@@ -159,14 +151,15 @@ def salvar():
     servico = data.get('servico')
     qtd = float(data.get('quantidade', 1))
     valor_unitario = float(data.get('valor_unitario', 0))
+    data_servico = data.get('data_servico')
     valor_total = valor_unitario * qtd
 
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO ordens (terceiro, servico, quantidade, valor_unitario, valor_total)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (terceiro, servico, qtd, valor_unitario, valor_total))
+        INSERT INTO ordens (terceiro, servico, quantidade, valor_unitario, valor_total, data_servico)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (terceiro, servico, qtd, valor_unitario, valor_total, data_servico))
     conn.commit()
     conn.close()
 
@@ -177,7 +170,7 @@ def salvar():
 def listar():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, terceiro, servico, quantidade, valor_unitario, valor_total, strftime("%d/%m/%Y %H:%M", data, "localtime") FROM ordens ORDER BY id DESC')
+    cursor.execute('SELECT id, terceiro, servico, quantidade, valor_unitario, valor_total, data_servico FROM ordens ORDER BY id DESC')
     registros = cursor.fetchall()
     conn.close()
     return jsonify(registros)

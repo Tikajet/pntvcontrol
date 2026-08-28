@@ -3,21 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de O.S. Terceiros</title>
+    <title>PNTV Control - O.S. Terceiros</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
-    <div class="max-w-5xl mx-auto space-y-6">
-        <!-- Top Bar -->
+    <div class="max-w-5xl mx-auto space-y-4">
+        <!-- Topo -->
         <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow">
-            <h1 class="text-xl font-bold text-gray-800">Painel de Lançamento de O.S.</h1>
+            <h1 class="text-xl font-bold text-gray-800">PNTV Control - Gestão de Terceirizados</h1>
             <a href="/logout" class="text-sm bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600">Sair</a>
         </div>
 
-        <!-- Lançamento de O.S. -->
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Nova Ordem de Serviço</h2>
-            <form id="osForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- Abas -->
+        <div class="flex border-b border-gray-300 bg-white rounded-t-lg px-4 pt-2 gap-2">
+            <button onclick="mudarAba('abaLancar')" id="btnLancar" class="py-2 px-4 font-semibold border-b-2 border-blue-600 text-blue-600">Lançar O.S.</button>
+            <button onclick="mudarAba('abaHistorico')" id="btnHistorico" class="py-2 px-4 font-semibold text-gray-500 hover:text-blue-600">Histórico de Lançamentos</button>
+            <button onclick="mudarAba('abaCadastros')" id="btnCadastros" class="py-2 px-4 font-semibold text-gray-500 hover:text-blue-600">Tabelas & Terceiros</button>
+        </div>
+
+        <!-- Conteúdo Aba 1: Lançar OS -->
+        <div id="abaLancar" class="bg-white p-6 rounded-b-lg shadow space-y-4">
+            <h2 class="text-lg font-bold text-gray-700">Nova Ordem de Serviço</h2>
+            <form id="osForm" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Data do Serviço</label>
+                    <input type="date" id="data_servico" class="mt-1 block w-full p-2.5 border rounded-md bg-gray-50">
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Terceiro</label>
                     <select id="terceiro" class="mt-1 block w-full p-2.5 border rounded-md bg-gray-50"></select>
@@ -31,31 +42,51 @@
                     <input type="number" id="quantidade" value="1" step="0.01" class="mt-1 block w-full p-2.5 border rounded-md bg-gray-50">
                 </div>
                 <div class="flex items-end">
-                    <button type="button" onclick="salvarOS()" class="w-full bg-blue-600 text-white p-2.5 rounded-md font-semibold hover:bg-blue-700">Lançar O.S.</button>
+                    <button type="button" onclick="salvarOS()" class="w-full bg-blue-600 text-white p-2.5 rounded-md font-semibold hover:bg-blue-700">Salvar O.S.</button>
                 </div>
             </form>
         </div>
 
-        <!-- Painel de Gerenciamento (Cadastros) -->
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Cadastros & Configurações de Tabela</h2>
+        <!-- Conteúdo Aba 2: Histórico -->
+        <div id="abaHistorico" class="bg-white p-6 rounded-b-lg shadow hidden">
+            <h2 class="text-lg font-bold mb-4 text-gray-700">Histórico Geral</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse border border-gray-200">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700 text-sm">
+                            <th class="p-3 border">Data Serviço</th>
+                            <th class="p-3 border">Terceiro</th>
+                            <th class="p-3 border">Serviço</th>
+                            <th class="p-3 border">Qtd</th>
+                            <th class="p-3 border">Unitário</th>
+                            <th class="p-3 border">Total</th>
+                            <th class="p-3 border text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaRegistros" class="divide-y divide-gray-200 text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Conteúdo Aba 3: Cadastros -->
+        <div id="abaCadastros" class="bg-white p-6 rounded-b-lg shadow space-y-6 hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Cadastro Terceiros -->
-                <div class="border p-4 rounded">
-                    <h3 class="font-bold mb-2 text-sm text-gray-600">Cadastrar Novo Terceiro</h3>
-                    <div class="flex gap-2 mb-3">
+                <div class="border p-4 rounded-lg">
+                    <h3 class="font-bold mb-3 text-gray-700">Adicionar Novo Terceiro</h3>
+                    <div class="flex gap-2">
                         <input type="text" id="novoTerceiro" placeholder="Nome do Terceiro" class="w-full p-2 border rounded">
-                        <button onclick="cadastrarTerceiro()" class="bg-green-600 text-white px-4 py-2 rounded font-semibold text-sm hover:bg-green-700">Adicionar</button>
+                        <button onclick="cadastrarTerceiro()" class="bg-green-600 text-white px-4 py-2 rounded font-semibold text-sm hover:bg-green-700">Salvar</button>
                     </div>
                 </div>
 
-                <!-- Cadastro Serviços por Terceiro -->
-                <div class="border p-4 rounded">
-                    <h3 class="font-bold mb-2 text-sm text-gray-600">Cadastrar Serviço/Valor</h3>
-                    <div class="space-y-2">
+                <!-- Cadastro Serviços com Preço Específico -->
+                <div class="border p-4 rounded-lg">
+                    <h3 class="font-bold mb-3 text-gray-700">Adicionar Serviço / Preço Personalizado</h3>
+                    <div class="space-y-3">
                         <select id="terceiroServico" class="w-full p-2 border rounded"></select>
                         <div class="flex gap-2">
-                            <input type="text" id="novoServico" placeholder="Ex: MANUTENÇÃO" class="w-full p-2 border rounded">
+                            <input type="text" id="novoServico" placeholder="Serviço (ex: LOSS)" class="w-full p-2 border rounded">
                             <input type="number" id="novoValor" placeholder="R$ 0.00" step="0.01" class="w-32 p-2 border rounded">
                             <button onclick="cadastrarServico()" class="bg-green-600 text-white px-4 py-2 rounded font-semibold text-sm hover:bg-green-700">Salvar</button>
                         </div>
@@ -63,31 +94,31 @@
                 </div>
             </div>
         </div>
-
-        <!-- Histórico -->
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-bold mb-4 text-gray-700">Histórico de Lançamentos</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse border border-gray-200">
-                    <thead>
-                        <tr class="bg-gray-100 text-gray-700 text-sm">
-                            <th class="p-3 border">Data</th>
-                            <th class="p-3 border">Terceiro</th>
-                            <th class="p-3 border">Serviço</th>
-                            <th class="p-3 border">Qtd</th>
-                            <th class="p-3 border">Unitário</th>
-                            <th class="p-3 border">Total</th>
-                            <th class="p-3 border text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaRegistros" class="divide-y divide-gray-200 text-sm"></tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
     <script>
         let servicosAtuais = [];
+
+        // Definir data de hoje como padrão no input
+        document.getElementById('data_servico').valueAsDate = new Date();
+
+        function mudarAba(abaId) {
+            ['abaLancar', 'abaHistorico', 'abaCadastros'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            ['btnLancar', 'btnHistorico', 'btnCadastros'].forEach(id => {
+                const btn = document.getElementById(id);
+                btn.classList.remove('border-b-2', 'border-blue-600', 'text-blue-600');
+                btn.classList.add('text-gray-500');
+            });
+
+            document.getElementById(abaId).classList.remove('hidden');
+            const btnAtivo = document.getElementById('btn' + abaId.replace('aba', ''));
+            btnAtivo.classList.add('border-b-2', 'border-blue-600', 'text-blue-600');
+            btnAtivo.classList.remove('text-gray-500');
+
+            if(abaId === 'abaHistorico') carregarTabela();
+        }
 
         async function carregarTerceiros() {
             const res = await fetch('/api/terceiros');
@@ -152,6 +183,7 @@
         }
 
         async function salvarOS() {
+            const data_servico = document.getElementById('data_servico').value;
             const terceiro = document.getElementById('terceiro').value;
             const servicoNome = document.getElementById('servico').value;
             const quantidade = document.getElementById('quantidade').value;
@@ -162,14 +194,15 @@
             await fetch('/salvar', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({terceiro, servico: servicoNome, quantidade, valor_unitario})
+                body: JSON.stringify({data_servico, terceiro, servico: servicoNome, quantidade, valor_unitario})
             });
 
+            alert('O.S. salva com sucesso!');
             carregarTabela();
         }
 
         async function deletarOS(id) {
-            if(confirm("Deseja realmente apagar esta O.S.?")) {
+            if(confirm("Deseja apagar esta O.S.?")) {
                 await fetch(`/deletar_os/${id}`, { method: 'DELETE' });
                 carregarTabela();
             }
@@ -181,8 +214,9 @@
             const tbody = document.getElementById('tabelaRegistros');
             tbody.innerHTML = '';
             dados.forEach(r => {
+                const dataFmt = r[6] ? r[6].split('-').reverse().join('/') : '-';
                 tbody.innerHTML += `<tr class="hover:bg-gray-50">
-                    <td class="p-3 border">${r[6]}</td>
+                    <td class="p-3 border">${dataFmt}</td>
                     <td class="p-3 border font-medium">${r[1]}</td>
                     <td class="p-3 border">${r[2]}</td>
                     <td class="p-3 border">${r[3]}</td>
