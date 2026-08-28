@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de O.S. Terceiros</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Lançamento de O.S. Terceirizadas</h2>
+        
+        <form id="osForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Técnico/Terceiro</label>
+                <select id="terceiro" class="mt-1 block w-full p-2.5 border rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500">
+                    {% for t in terceiros %}
+                    <option value="{{ t }}">{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Serviço</label>
+                <select id="servico" class="mt-1 block w-full p-2.5 border rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500"></select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Qtd / Metros</label>
+                <input type="number" id="quantidade" value="1" step="0.01" class="mt-1 block w-full p-2.5 border rounded-md bg-gray-50">
+            </div>
+
+            <div class="flex items-end">
+                <button type="button" onclick="salvarOS()" class="w-full bg-blue-600 text-white p-2.5 rounded-md font-semibold hover:bg-blue-700 transition">Lançar O.S.</button>
+            </div>
+        </form>
+
+        <h3 class="text-xl font-bold mb-4 text-gray-700">Histórico de Lançamentos</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse border border-gray-200">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700">
+                        <th class="p-3 border">Data</th>
+                        <th class="p-3 border">Terceiro</th>
+                        <th class="p-3 border">Serviço</th>
+                        <th class="p-3 border">Qtd</th>
+                        <th class="p-3 border">Unitário</th>
+                        <th class="p-3 border">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaRegistros" class="divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function carregarServicos() {
+            const terceiro = document.getElementById('terceiro').value;
+            const res = await fetch(`/api/precos/${terceiro}`);
+            const precos = await res.json();
+            const servicoSelect = document.getElementById('servico');
+            servicoSelect.innerHTML = '';
+            for (let s in precos) {
+                servicoSelect.innerHTML += `<option value="${s}">${s} (R$ ${precos[s].toFixed(2)})</option>`;
+            }
+        }
+
+        async function salvarOS() {
+            const data = {
+                terceiro: document.getElementById('terceiro').value,
+                servico: document.getElementById('servico').value,
+                quantidade: document.getElementById('quantidade').value
+            };
+            await fetch('/salvar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            carregarTabela();
+        }
+
+        async function carregarTabela() {
+            const res = await fetch('/listar');
+            const dados = await res.json();
+            const tbody = document.getElementById('tabelaRegistros');
+            tbody.innerHTML = '';
+            dados.forEach(r => {
+                tbody.innerHTML += `<tr class="hover:bg-gray-50">
+                    <td class="p-3 border text-sm">${r[5]}</td>
+                    <td class="p-3 border font-medium">${r[0]}</td>
+                    <td class="p-3 border">${r[1]}</td>
+                    <td class="p-3 border">${r[2]}</td>
+                    <td class="p-3 border">R$ ${r[3].toFixed(2)}</td>
+                    <td class="p-3 border font-bold text-green-700">R$ ${r[4].toFixed(2)}</td>
+                </tr>`;
+            });
+        }
+
+        document.getElementById('terceiro').addEventListener('change', carregarServicos);
+        carregarServicos();
+        carregarTabela();
+    </script>
+</body>
+</html>
