@@ -7,17 +7,14 @@ from waitress import serve
 app = Flask(__name__)
 app.secret_key = 'pntvcontrol_secret_key_prod'
 
-# Credenciais Padrão
 USUARIO_ADMIN = "admin"
 SENHA_ADMIN = "admin123"
-
 DB_FILE = 'ordens.db'
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # Tabela de Ordens de Serviço
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ordens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,11 +24,17 @@ def init_db():
             valor_unitario REAL,
             valor_total REAL,
             data_servico TEXT,
+            pago INTEGER DEFAULT 0,
             data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Garantir que a coluna 'pago' exista em bancos pré-existentes
+    cursor.execute("PRAGMA table_info(ordens)")
+    colunas = [col[1] for col in cursor.fetchall()]
+    if 'pago' not in colunas:
+        cursor.execute('ALTER TABLE ordens ADD COLUMN pago INTEGER DEFAULT 0')
     
-    # Tabela de Terceiros
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS terceiros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +42,6 @@ def init_db():
         )
     ''')
     
-    # Tabela de Serviços por Terceiro
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS servicos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,7 +51,6 @@ def init_db():
         )
     ''')
 
-    # Populando dados pré-existentes caso o banco esteja vazio
     cursor.execute('SELECT COUNT(*) FROM terceiros')
     if cursor.fetchone()[0] == 0:
         terceiros_iniciais = ["PADRAO", "ELIENE", "LEANDRO", "STEVAN", "DENIS", "CLEIDE"]
@@ -76,7 +77,6 @@ def init_db():
 
 init_db()
 
-# Decorator de Controle de Acesso
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -106,8 +106,6 @@ def logout():
 @login_required
 def index():
     return render_template('index.html')
-
-# --- ROTAS DA API ---
 
 @app.route('/api/terceiros', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -171,14 +169,15 @@ def salvar():
     qtd = float(data.get('quantidade', 1))
     valor_unitario = float(data.get('valor_unitario', 0))
     data_servico = data.get('data_servico')
+    pago = 1 if data.get('pago') else 0
     valor_total = valor_unitario * qtd
 
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO ordens (terceiro, servico, quantidade, valor_unitario, valor_total, data_servico)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (terceiro, servico, qtd, valor_unitario, valor_total, data_servico))
+        INSERT INTO ordens (terceiro, servico, quantidade, valor_unitario, valor_total, data_servico, pago)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (terceiro, servico, qtd, valor_unitario, valor_total, data_servico, pago))
     conn.commit()
     conn.close()
 
@@ -190,11 +189,12 @@ def listar():
     terceiro = request.args.get('terceiro', '')
     data_inicio = request.args.get('data_inicio', '')
     data_fim = request.args.get('data_fim', '')
+    pago = request.args.get('pago', '')
 
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    query = 'SELECT id, terceiro, servico, quantidade, valor_unitario, valor_total, data_servico FROM ordens WHERE 1=1'
+    query = 'SELECT id, terceiro, servico, quantidade, valor_unitario, valor_total, data_servico, pago FROM ordens WHERE 1=1'
     params = []
 
     if terceiro:
@@ -209,12 +209,26 @@ def listar():
         query += ' AND data_servico <= ?'
         params.append(data_fim)
 
+    if pago != '':
+        query += ' AND pago = ?'
+        params.append(int(pago))
+
     query += ' ORDER BY data_servico DESC, id DESC'
 
     cursor.execute(query, params)
     registros = cursor.fetchall()
     conn.close()
     return jsonify(registros)
+
+@app.route('/alterar_status_pago/<int:os_id>', methods=['POST'])
+@login_required
+def alterar_status_pago(os_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE ordens SET pago = CASE WHEN pago = 1 THEN 0 ELSE 1 END WHERE id = ?', (os_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "sucesso"})
 
 @app.route('/deletar_os/<int:os_id>', methods=['DELETE'])
 @login_required
