@@ -1,20 +1,23 @@
 import os
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 from functools import wraps
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from waitress import serve
 
 app = Flask(__name__)
 app.secret_key = 'pntvcontrol_secret_key_prod'
 
+# Credenciais Padrão
 USUARIO_ADMIN = "admin"
 SENHA_ADMIN = "admin123"
+
 DB_FILE = 'ordens.db'
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
+    # Tabela de Ordens de Serviço
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ordens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,6 +31,7 @@ def init_db():
         )
     ''')
     
+    # Tabela de Terceiros
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS terceiros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +39,7 @@ def init_db():
         )
     ''')
     
+    # Tabela de Serviços por Terceiro
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS servicos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,6 +49,7 @@ def init_db():
         )
     ''')
 
+    # Populando dados pré-existentes caso o banco esteja vazio
     cursor.execute('SELECT COUNT(*) FROM terceiros')
     if cursor.fetchone()[0] == 0:
         terceiros_iniciais = ["PADRAO", "ELIENE", "LEANDRO", "STEVAN", "DENIS", "CLEIDE"]
@@ -70,6 +76,7 @@ def init_db():
 
 init_db()
 
+# Decorator de Controle de Acesso
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -82,7 +89,9 @@ def login_required(f):
 def login():
     erro = None
     if request.method == 'POST':
-        if request.form.get('usuario') == USUARIO_ADMIN and request.form.get('senha') == SENHA_ADMIN:
+        usuario = request.form.get('usuario')
+        senha = request.form.get('senha')
+        if usuario == USUARIO_ADMIN and senha == SENHA_ADMIN:
             session['logged_in'] = True
             return redirect(url_for('index'))
         erro = "Usuário ou senha incorretos."
@@ -98,6 +107,8 @@ def logout():
 def index():
     return render_template('index.html')
 
+# --- ROTAS DA API ---
+
 @app.route('/api/terceiros', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def gerenciar_terceiros():
@@ -112,6 +123,14 @@ def gerenciar_terceiros():
             conn.close()
             return jsonify({"status": "sucesso"})
         return jsonify({"status": "erro"}), 400
+
+    if request.method == 'DELETE':
+        nome = request.json.get('nome')
+        cursor.execute('DELETE FROM terceiros WHERE nome = ?', (nome,))
+        cursor.execute('DELETE FROM servicos WHERE terceiro = ?', (nome,))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "sucesso"})
 
     cursor.execute('SELECT nome FROM terceiros WHERE nome != "PADRAO" ORDER BY nome ASC')
     terceiros = [row[0] for row in cursor.fetchall()]
@@ -168,9 +187,31 @@ def salvar():
 @app.route('/listar')
 @login_required
 def listar():
+    terceiro = request.args.get('terceiro', '')
+    data_inicio = request.args.get('data_inicio', '')
+    data_fim = request.args.get('data_fim', '')
+
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, terceiro, servico, quantidade, valor_unitario, valor_total, data_servico FROM ordens ORDER BY id DESC')
+    
+    query = 'SELECT id, terceiro, servico, quantidade, valor_unitario, valor_total, data_servico FROM ordens WHERE 1=1'
+    params = []
+
+    if terceiro:
+        query += ' AND terceiro = ?'
+        params.append(terceiro)
+    
+    if data_inicio:
+        query += ' AND data_servico >= ?'
+        params.append(data_inicio)
+
+    if data_fim:
+        query += ' AND data_servico <= ?'
+        params.append(data_fim)
+
+    query += ' ORDER BY data_servico DESC, id DESC'
+
+    cursor.execute(query, params)
     registros = cursor.fetchall()
     conn.close()
     return jsonify(registros)
